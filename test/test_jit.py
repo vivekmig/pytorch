@@ -2136,6 +2136,7 @@ graph(%input, %weight):
                 x = torch.min(x)
                 x = torch.mean(x)
                 x = x.reshape([-1])
+                x, y = torch.chunk(x, 2)
                 x = F.dropout(x)
                 x = self.dropout(x)
                 # TODO: uncomment when sort is supported
@@ -2158,6 +2159,8 @@ graph(%input, %weight):
                    .check("aten::min") \
                    .check("aten::mean") \
                    .check("aten::reshape") \
+                   .check("aten::chunk") \
+                   .check("prim::ListUnpack") \
                    .check("aten::dropout") \
                    .check("aten::dropout") \
                    .run(m.graph)
@@ -2170,6 +2173,8 @@ graph(%input, %weight):
                    .check("aten::min") \
                    .check("aten::mean") \
                    .check("aten::reshape") \
+                   .check("aten::chunk") \
+                   .check("prim::ListUnpack") \
                    .check("aten::dropout") \
                    .check("aten::dropout") \
                    .check("dequantize") \
