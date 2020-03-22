@@ -239,7 +239,23 @@ struct TORCH_API Engine {
   std::once_flag start_threads_flag_;
   // Safe to read ready_queues_ without synchronization after intialization
   std::vector<std::shared_ptr<ReadyQueue>> ready_queues_;
-  std::vector<std::function<void()>> final_callbacks_;
+  // Note [Reentrant backward Callbacks]
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // Final callbacks are stored as part of the context for each reentrant
+  // backward. This final_callbacks_ map maps reentrant depth to the callbacks
+  // installed during the lifetime of the corresponding backward. More
+  // specifically:
+  // * Insertion: when inserting callbacks, queue_callback() uses the
+  //   thread_local total_depth to find the vector to insert into.
+  // * Deletion: the ClearCallbacks guard remembers the depth of the current
+  //   backward call, and only erases the corresponding vector from the map
+  //   on exit.
+  // * Execution: at the end of backward with depth x, the engine only executes
+  //   callbacks installed during the corresponding backward with depth x.
+  // NB: Using a map instead of a vector to avoid the overhead of creating an
+  // empty vector for each depth, while the callbacks might be only installed
+  // in a small subset of those reentrant backward calls.
+  std::unordered_map<int, std::vector<std::function<void()>>> final_callbacks_;
   // To protect reads and writes to final_callbacks_
   std::mutex post_callbacks_lock_;
   // How many nested reentrant calls are allowed until a new thread is used
